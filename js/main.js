@@ -244,8 +244,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 9. Keyboard & Click Navigation
   initInteractionListeners();
 
-  // 10. Initial Slide State
-  updateSlideDisplay(0);
+  // 10. Initial Slide State (support returning directly to Team Hub via #hub)
+  const initialIndex = window.location.hash === '#hub' ? 2 : 0;
+  updateSlideDisplay(initialIndex);
 });
 
 /**

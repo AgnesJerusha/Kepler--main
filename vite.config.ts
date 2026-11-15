@@ -47,10 +47,13 @@ function serveRawStaticDirsPlugin(rawPrefixes: string[], strictAssetPrefixes: st
       server.middlewares.use((req, res, next) => {
         const urlPath = (req.url || '/').split('?')[0];
 
-        // Return real 404 (not SPA index.html) when a requested audio/asset file is missing
+        // Return real 404 (not SPA index.html) when a requested audio/asset/data file is missing
         if (strictAssetPrefixes.some((p) => urlPath.startsWith(p))) {
           const filePath = path.resolve(__dirname, '.' + urlPath);
-          if (!filePath.startsWith(__dirname) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+          const publicPath = path.resolve(__dirname, 'public' + urlPath);
+          const existsInRoot = filePath.startsWith(__dirname) && fs.existsSync(filePath) && !fs.statSync(filePath).isDirectory();
+          const existsInPublic = publicPath.startsWith(path.resolve(__dirname, 'public')) && fs.existsSync(publicPath) && !fs.statSync(publicPath).isDirectory();
+          if (!existsInRoot && !existsInPublic) {
             res.statusCode = 404;
             res.end('Not found');
             return;
@@ -85,7 +88,7 @@ function serveRawStaticDirsPlugin(rawPrefixes: string[], strictAssetPrefixes: st
 export default defineConfig(() => {
   return {
     plugins: [
-      serveRawStaticDirsPlugin(['/anatomy', '/kepler-modle-main'], ['/audio/']),
+      serveRawStaticDirsPlugin(['/anatomy', '/kepler-modle-main'], ['/audio/', '/assets/', '/data/']),
       react(),
       tailwindcss(),
       copyStaticDirsPlugin(['assets', 'audio', 'data', 'anatomy', 'kepler-modle-main']),
@@ -95,12 +98,28 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          acknowledgements: path.resolve(__dirname, 'acknowledgements.html'),
+        },
+      },
+    },
     server: {
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true as const,
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
+    },
+    preview: {
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true as const,
     },
   };
 });
